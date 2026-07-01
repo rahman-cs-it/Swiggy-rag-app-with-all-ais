@@ -1,0 +1,6 @@
+Place the Swiggy Annual Report FY 2023-24 PDF here, named:
+Swiggy_Annual_Report_FY2023-24.pdf
+
+(The version you uploaded was an incomplete/truncated download —
+re-download it from Swiggy's investor relations page and drop it
+in this folder before running 'python src/ingest.py'.)
