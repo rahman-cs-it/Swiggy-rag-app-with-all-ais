@@ -163,7 +163,7 @@ except FileNotFoundError as e:
     st.error(f"⚠️ {e}")
     st.stop()
 
-st.info("⚡ First load takes 30–60 seconds while the AI model initialises. Subsequent questions are fast.", icon="ℹ️")
+# st.info("⚡ First load takes 30–60 seconds while the AI model initialises. Subsequent questions are fast.", icon="ℹ️")
 
 # ── Main Q&A ──────────────────────────────────────────────────────────────────
 query = st.text_input(
