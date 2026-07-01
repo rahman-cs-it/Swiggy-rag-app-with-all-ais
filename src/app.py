@@ -7,12 +7,15 @@ import os
 import streamlit as st
 from rag import SwiggyRAG, PROVIDER_DEFAULTS
 
-st.set_page_config(page_title="Swiggy Annual Report Q&A", page_icon="🛵", layout="wide")
+# Wrap in a try/except block to safely catch secondary execution attempts
+try:
+    st.set_page_config(page_title="Swiggy Annual Report Q&A", page_icon="🛵", layout="wide")
+except st.errors.StreamlitAPIException:
+    pass # Already set, safely ignore the exception
 
 st.title("🛵 Swiggy Annual Report — RAG Q&A")
 st.caption("Ask questions about Swiggy's FY 2023-24 Annual Report. "
            "Answers are generated strictly from the document content.")
-
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.header("⚙️ LLM Provider")
@@ -84,7 +87,7 @@ with st.sidebar:
             "Use Gemini, OpenAI, or Claude for a hosted app.\n\n"
             "**To run locally on your own machine:**\n"
             "1. Install Ollama → [ollama.com](https://ollama.com)\n"
-            "2. Pull a model: `ollama pull qwen2.5-3b`\n"
+            "2. Pull a model: `ollama pull qwen2.5-3bgpu`\n"
             "3. Run this app on your own machine (not on a remote server)\n\n"
             f"Currently configured model: `{model}`"
         )
@@ -150,7 +153,7 @@ with st.sidebar:
     """)
 
 # ── Load RAG ──────────────────────────────────────────────────────────────────
-@st.cache_resource
+@st.cache_resource(show_spinner="🔄 Loading AI model and document index (first load only)...")
 def load_rag():
     return SwiggyRAG()
 
@@ -159,6 +162,8 @@ try:
 except FileNotFoundError as e:
     st.error(f"⚠️ {e}")
     st.stop()
+
+st.info("⚡ First load takes 30–60 seconds while the AI model initialises. Subsequent questions are fast.", icon="ℹ️")
 
 # ── Main Q&A ──────────────────────────────────────────────────────────────────
 query = st.text_input(
@@ -184,7 +189,7 @@ if st.button("Ask", type="primary") and query.strip():
             st.stop()
 
     st.subheader("💬 Answer")
-    st.write(result["answer"])
+    st.markdown(result["answer"])
 
     with st.expander("📄 Supporting context (retrieved chunks)"):
         for i, c in enumerate(result["contexts"], 1):
@@ -194,6 +199,3 @@ if st.button("Ask", type="primary") and query.strip():
             )
             st.write(c["text"])
             st.divider()
-
-
-

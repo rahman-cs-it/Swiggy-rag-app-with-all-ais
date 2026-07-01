@@ -16,9 +16,18 @@ import faiss
 from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
 
-# Load .env from project root (two levels up from src/)
+# Load .env for local development
 _ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(_ROOT / ".env")
+
+# On Streamlit Cloud, also pull keys from st.secrets into os.environ
+try:
+    import streamlit as _st
+    for _k in ["GEMINI_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OLLAMA_MODEL"]:
+        if _k in _st.secrets and not os.environ.get(_k):
+            os.environ[_k] = _st.secrets[_k]
+except Exception:
+    pass  # CLI mode or secrets not configured — safe to ignore
 
 INDEX_DIR = _ROOT / "vectorstore"
 INDEX_PATH = INDEX_DIR / "faiss.index"
@@ -27,19 +36,23 @@ META_PATH  = INDEX_DIR / "chunks.pkl"
 EMBED_MODEL_NAME = "all-MiniLM-L6-v2"
 TOP_K = 5
 
-SYSTEM_PROMPT = """You are a precise financial document assistant.
-Answer the user's question using ONLY the information in the provided
-context, which is extracted from Swiggy's Annual Report FY 2023-24.
+SYSTEM_PROMPT = """You are a precise financial document assistant specializing in Swiggy's Annual Report FY 2023-24.
 
-Rules:
+Answer the user's question using ONLY the information provided in the context below.
+
+Response format rules (follow these strictly):
+- Give a thorough, well-structured answer — do NOT give a one-line response.
+- Start with a direct answer to the question in 1-2 sentences.
+- Then elaborate with relevant details, numbers, and facts from the context.
+- Use bullet points or numbered lists when presenting multiple data points or facts.
+- Always cite the page number(s) your answer is drawn from, e.g. (Page 12).
 - If the answer is not contained in the context, respond exactly:
   "I could not find this information in the Swiggy Annual Report."
-- Do not use any outside knowledge or make assumptions.
-- Be concise and cite page numbers from the context when possible.
+- Never use outside knowledge or make assumptions beyond what the context states.
 """
 
 PROVIDER_DEFAULTS = {
-    "ollama":    os.environ.get("OLLAMA_MODEL", "Qwen2.5-3B"),
+    "ollama":    os.environ.get("OLLAMA_MODEL", "qwen2.5-3bgpu"),
     "openai":    "gpt-4o-mini",
     "anthropic": "claude-3-5-haiku-20241022",
     "gemini":    "gemini-2.5-flash",
@@ -52,7 +65,10 @@ class SwiggyRAG:
             raise FileNotFoundError(
                 "Vector store not found. Run `python src/ingest.py` first."
             )
-        self.embed_model = SentenceTransformer(EMBED_MODEL_NAME)
+        self.embed_model = SentenceTransformer(
+            EMBED_MODEL_NAME,
+            cache_folder=str(_ROOT / "models"),
+        )
         self.index = faiss.read_index(str(INDEX_PATH))
         with open(META_PATH, "rb") as f:
             self.chunks = pickle.load(f)
